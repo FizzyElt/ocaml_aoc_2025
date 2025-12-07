@@ -1,18 +1,23 @@
 open Lib
 
+let split_count (current : int array) (row : char array) =
+    CCArray.iteri
+      (fun i c ->
+         if c = '^' && current.(i) > 0 then (
+           current.(i - 1) <- current.(i - 1) + current.(i);
+           current.(i + 1) <- current.(i + 1) + current.(i);
+           current.(i) <- 0
+         ) )
+      row;
+    current
+;;
+
 let rec split_tachyon (current : int array) (level : char array list) =
     match level with
     | [] -> current
     | l :: tail ->
-      CCArray.iteri
-        (fun i c ->
-           if c = '^' && current.(i) > 0 then (
-             current.(i - 1) <- current.(i - 1) + current.(i);
-             current.(i + 1) <- current.(i + 1) + current.(i);
-             current.(i) <- 0
-           ) )
-        l;
-      split_tachyon current tail
+      let next = split_count current l in
+      split_tachyon next tail
 ;;
 
 let parse_line (s : string) = CCString.to_array s
