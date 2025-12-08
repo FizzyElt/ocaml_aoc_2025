@@ -20,17 +20,17 @@ module Junction = struct
   ;;
 end
 
-let insert_junction
+let insert_junctions
       (groups : Junction.t list array)
-      (pair : Junction.t * Junction.t)
+      (connection : Junction.t * Junction.t)
   : Junction.t list array
   =
-    let (a, b) = pair in
+    let (node_a, node_b) = connection in
     let group_idx_a =
-        groups |> CCArray.find_index (CCList.exists (Junction.equal a))
+        groups |> CCArray.find_index (CCList.exists (Junction.equal node_a))
     in
     let group_idx_b =
-        groups |> CCArray.find_index (CCList.exists (Junction.equal b))
+        groups |> CCArray.find_index (CCList.exists (Junction.equal node_b))
     in
     match (group_idx_a, group_idx_b) with
     (* in same group *)
@@ -48,23 +48,28 @@ let insert_junction
         groups
     | (Some idx_a, None) ->
       let group_a = groups.(idx_a) in
-      groups.(idx_a) <- b :: group_a;
+      groups.(idx_a) <- node_b :: group_a;
       groups
     | (None, Some idx_b) ->
       let group_b = groups.(idx_b) in
-      groups.(idx_b) <- a :: group_b;
+      groups.(idx_b) <- node_a :: group_b;
       groups
-    | (None, None) -> CCArray.append groups [| [ a; b ] |]
+    | (None, None) -> CCArray.append groups [| [ node_a; node_b ] |]
 ;;
 
-let group_junctions (pairs : (Junction.t * Junction.t * int) list) (total : int)
+let group_connections
+      (connections : (Junction.t * Junction.t) list)
+      (total : int)
   =
-    let rec loop pairs (groups : Junction.t list array) =
-        match pairs with
+    let rec loop
+              (connections : (Junction.t * Junction.t) list)
+              (groups : Junction.t list array)
+      =
+        match connections with
         | [] -> 0
-        | pair :: rest ->
-          let (junction_a, junction_b, _) = pair in
-          let new_groups = insert_junction groups (junction_a, junction_b) in
+        | connection :: tail ->
+          let (junction_a, junction_b) = connection in
+          let new_groups = insert_junctions groups (junction_a, junction_b) in
           if
             CCArray.length new_groups = 1
             && CCList.length new_groups.(0) = total
@@ -73,26 +78,28 @@ let group_junctions (pairs : (Junction.t * Junction.t * int) list) (total : int)
             let (b_x, _, _) = junction_b in
             a_x * b_x
           ) else
-            loop rest new_groups
+            loop tail new_groups
     in
 
-    loop pairs [||]
+    loop connections [||]
 ;;
 
-let all_distances (arr : Junction.t array)
-  : (Junction.t * Junction.t * int) list
+let all_distances (junctions : Junction.t array)
+  : (Junction.t * Junction.t) list
   =
-    let len = CCArray.length arr in
+    let len = CCArray.length junctions in
     let res = ref [] in
     for i = 0 to len - 2 do
       for j = i + 1 to len - 1 do
-        let a = arr.(i) in
-        let b = arr.(j) in
+        let a = junctions.(i) in
+        let b = junctions.(j) in
         let distance = Junction.distance a b in
         res := (a, b, distance) :: !res
       done
     done;
-    CCList.sort (fun (_, _, dis_a) (_, _, dis_b) -> dis_a - dis_b) !res
+    !res
+    |> CCList.sort (fun (_, _, dis_a) (_, _, dis_b) -> dis_a - dis_b)
+    |> CCList.map (fun (junction_a, junction_b, _) -> (junction_a, junction_b))
 ;;
 
 let parse_line s =
@@ -110,7 +117,7 @@ let () =
     in
     let sorted_distances = all_distances coords in
 
-    let res = group_junctions sorted_distances (CCArray.length coords) in
+    let res = group_connections sorted_distances (CCArray.length coords) in
 
     print_int res;
     ()
