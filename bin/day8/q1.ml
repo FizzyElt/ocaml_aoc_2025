@@ -99,7 +99,8 @@ let () =
     let coords =
         File.read_list_of_line parse_line Sys.argv.(1) |> CCArray.of_list
     in
-    let sorted_distances = all_distances coords |> CCList.take 1000 in
+    let take_count = 1000 in
+    let sorted_distances = all_distances coords |> CCList.take take_count in
 
     let groups = group_junctions sorted_distances |> CCArray.to_list in
     let res =
