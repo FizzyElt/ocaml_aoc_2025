@@ -41,7 +41,7 @@ let insert_junctions
     | (Some idx_a, Some idx_b) ->
       let group_a = groups.(idx_a) in
       let group_b = groups.(idx_b) in
-      groups.(idx_a) <- group_a @ group_b |> CCList.uniq ~eq:Junction.equal;
+      groups.(idx_a) <- group_a @ group_b;
       groups.(idx_b) <- [];
       CCArray.filter
         (function
