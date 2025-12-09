@@ -151,11 +151,11 @@ let find_max_area
       (horizontal_lines : coord list list)
   =
     let len = CCArray.length coords in
-    let rec loop left right =
+    let rec loop left right max_area =
         if left >= right then
-          0
+          max_area
         else begin
-          let max_area =
+          let curr_max =
               [ (left, right); (left + 1, right); (left, right - 1) ]
               |> CCList.fold_left
                    (fun acc (left, right) ->
@@ -164,6 +164,11 @@ let find_max_area
                       let origin_a = divide_two a in
                       let origin_b = divide_two b in
                       let area = get_area origin_a origin_b in
+                      (* Printf.printf
+                        "%s %s %d\n"
+                        (coord_to_string origin_a)
+                        (coord_to_string origin_b)
+                        area; *)
                       if
                         area > acc
                         && check_rect a b vertical_lines horizontal_lines
@@ -171,15 +176,13 @@ let find_max_area
                         area
                       else
                         acc )
-                   0
+                   max_area
           in
-          if max_area = 0 then
-            loop (left + 1) (right - 1)
-          else
-            max_area
+
+          loop (left + 1) (right - 1) curr_max
         end
     in
-    loop 0 (len - 1)
+    loop 0 (len - 1) 0
 ;;
 
 let parse_line (s : string) : coord =
