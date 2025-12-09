@@ -99,6 +99,7 @@ let check_rect
       (vertical_lines : coord list list)
       (horizontal_lines : coord list list)
   =
+    (* print_endline "check rect"; *)
     if is_line horizontal_lines vertical_lines (a_x, a_y) (b_x, b_y) then
       true
     else begin
@@ -116,26 +117,29 @@ let check_rect
           := !in_polygon && is_in_polygon (i, min_y + 1) vertical_lines
       done;
 
-      (* bottom line *)
-      for i = min_x + 1 to max_x - 1 do
-        if !in_polygon then
-          in_polygon
-          := !in_polygon && is_in_polygon (i, max_y - 1) vertical_lines
-      done;
+      if !in_polygon then
+        (* bottom line *)
+        for i = min_x + 1 to max_x - 1 do
+          if !in_polygon then
+            in_polygon
+            := !in_polygon && is_in_polygon (i, max_y - 1) vertical_lines
+        done;
 
-      (* left line *)
-      for i = min_y + 1 to max_y - 1 do
-        if !in_polygon then
-          in_polygon
-          := !in_polygon && is_in_polygon (min_x + 1, i) vertical_lines
-      done;
+      if !in_polygon then
+        (* left line *)
+        for i = min_y + 1 to max_y - 1 do
+          if !in_polygon then
+            in_polygon
+            := !in_polygon && is_in_polygon (min_x + 1, i) vertical_lines
+        done;
 
-      (* right line *)
-      for i = min_y + 1 to max_y - 1 do
-        if !in_polygon then
-          in_polygon
-          := !in_polygon && is_in_polygon (max_x - 1 + 1, i) vertical_lines
-      done;
+      if !in_polygon then
+        (* right line *)
+        for i = min_y + 1 to max_y - 1 do
+          if !in_polygon then
+            in_polygon
+            := !in_polygon && is_in_polygon (max_x - 1 + 1, i) vertical_lines
+        done;
 
       !in_polygon
     end
@@ -146,30 +150,36 @@ let find_max_area
       (vertical_lines : coord list list)
       (horizontal_lines : coord list list)
   =
-    let max_area = ref 0 in
     let len = CCArray.length coords in
-    for i = 0 to len - 2 do
-      for j = i + 1 to len - 1 do
-        begin
-          let a = coords.(i) in
-          let b = coords.(j) in
-          if check_rect a b vertical_lines horizontal_lines then (
-            let origin_a = divide_two a in
-            let origin_b = divide_two b in
-
-            let area = get_area origin_a origin_b in
-            (* Printf.printf
-              "%s  %s  %d\n"
-              (coord_to_string origin_a)
-              (coord_to_string origin_b)
-              area; *)
-            if area > !max_area then max_area := area
-          )
+    let rec loop left right =
+        if left >= right then
+          0
+        else begin
+          let max_area =
+              [ (left, right); (left + 1, right); (left, right - 1) ]
+              |> CCList.fold_left
+                   (fun acc (left, right) ->
+                      let a = coords.(left) in
+                      let b = coords.(right) in
+                      let origin_a = divide_two a in
+                      let origin_b = divide_two b in
+                      let area = get_area origin_a origin_b in
+                      if
+                        area > acc
+                        && check_rect a b vertical_lines horizontal_lines
+                      then
+                        area
+                      else
+                        acc )
+                   0
+          in
+          if max_area = 0 then
+            loop (left + 1) (right - 1)
+          else
+            max_area
         end
-      done
-    done;
-
-    !max_area
+    in
+    loop 0 (len - 1)
 ;;
 
 let parse_line (s : string) : coord =
@@ -178,7 +188,14 @@ let parse_line (s : string) : coord =
 
 let () =
     let coords =
-        File.read_list_of_line parse_line Sys.argv.(1) |> CCArray.of_list
+        File.read_list_of_line parse_line Sys.argv.(1)
+        |> CCList.sort (fun (a_x, a_y) (b_x, b_y) ->
+          let x_ord = a_x - b_x in
+          if x_ord = 0 then
+            a_y - b_y
+          else
+            x_ord )
+        |> CCArray.of_list
     in
     let vertical_lines = get_vertical_lines coords in
     let horizontal_lines = get_horizontal_lines coords in
