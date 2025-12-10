@@ -81,8 +81,9 @@ let is_in_polygon (coord : coord) (vertical_lines : coord list list) =
     let rec loop lines cross_count =
         match lines with
         | [] -> cross_count
-        | [ (start_x, start_y); (_end_x, end_y) ] :: rest ->
+        | [ (start_x, start_y); (end_x, end_y) ] :: rest ->
           if start_x > x && start_y <= y && y <= end_y then
+            (* Printf.printf "(%d, %d) (%d, %d)\n" start_x start_y end_x end_y; *)
             loop rest (cross_count + 1)
           else
             loop rest cross_count
@@ -91,6 +92,75 @@ let is_in_polygon (coord : coord) (vertical_lines : coord list list) =
     let cross_count = loop vertical_lines 0 in
 
     cross_count mod 2 = 1
+;;
+
+let is_in_polygon2
+      (min_y, max_y)
+      (min_x, max_x)
+      (vertical_lines : coord list list)
+      (horizontal_lines : coord list list)
+  =
+    let check_vertical () =
+        begin
+          let cross_lines =
+              vertical_lines
+              |> CCList.filter (function
+                | [ (_, start_y); (_, end_y) ] ->
+                  not (max_y < start_y || min_y > end_y)
+                | _ -> failwith "invalid case" )
+          in
+
+          let rec loop lines idx =
+              match lines with
+              | [] | [ _ ] -> false
+              | line_a :: line_b :: rest ->
+                let start_x = line_a |> CCList.hd |> fst in
+                let end_x = line_b |> CCList.hd |> fst in
+                if min_x > start_x && max_x < end_x then
+                  idx mod 2 = 1
+                else
+                  loop (line_b :: rest) (idx + 1)
+          in
+          let cross_count = CCList.length cross_lines in
+          Printf.printf "%d\n" cross_count;
+          if cross_count = 0 then
+            loop cross_lines 1
+          else
+            false
+        end
+    in
+    let check_horizontal () =
+        begin
+          let cross_lines =
+              horizontal_lines
+              |> CCList.filter (function
+                | [ (start_x, _); (end_x, _) ] ->
+                  not (max_x < start_x || min_x > end_x)
+                | _ -> failwith "invalid case" )
+          in
+
+          let rec loop lines idx =
+              match lines with
+              | [] | [ _ ] -> false
+              | line_a :: line_b :: rest ->
+                let start_y = line_a |> CCList.hd |> snd in
+                let end_y = line_b |> CCList.hd |> snd in
+                if min_y > start_y && max_y < end_y then
+                  idx mod 2 = 1
+                else
+                  loop (line_b :: rest) (idx + 1)
+          in
+          let cross_count = CCList.length cross_lines in
+          Printf.printf "%d\n" cross_count;
+
+          if cross_count = 0 then
+            loop cross_lines 1
+          else
+            false
+        end
+    in
+
+    check_vertical () && check_horizontal ()
 ;;
 
 let check_rect
@@ -108,40 +178,11 @@ let check_rect
       let max_y = CCInt.max a_y b_y in
       let min_y = CCInt.min a_y b_y in
 
-      let in_polygon = ref true in
-
-      (* top line *)
-      for i = min_x + 1 to max_x - 1 do
-        if !in_polygon then
-          in_polygon
-          := !in_polygon && is_in_polygon (i, min_y + 1) vertical_lines
-      done;
-
-      if !in_polygon then
-        (* bottom line *)
-        for i = min_x + 1 to max_x - 1 do
-          if !in_polygon then
-            in_polygon
-            := !in_polygon && is_in_polygon (i, max_y - 1) vertical_lines
-        done;
-
-      if !in_polygon then
-        (* left line *)
-        for i = min_y + 1 to max_y - 1 do
-          if !in_polygon then
-            in_polygon
-            := !in_polygon && is_in_polygon (min_x + 1, i) vertical_lines
-        done;
-
-      if !in_polygon then
-        (* right line *)
-        for i = min_y + 1 to max_y - 1 do
-          if !in_polygon then
-            in_polygon
-            := !in_polygon && is_in_polygon (max_x - 1 + 1, i) vertical_lines
-        done;
-
-      !in_polygon
+      is_in_polygon2
+        (min_y + 1, max_y - 1)
+        (min_x + 1, max_x - 1)
+        vertical_lines
+        horizontal_lines
     end
 ;;
 
@@ -150,39 +191,32 @@ let find_max_area
       (vertical_lines : coord list list)
       (horizontal_lines : coord list list)
   =
+    let max_area = ref 0 in
     let len = CCArray.length coords in
-    let rec loop left right max_area =
-        if left >= right then
-          max_area
-        else begin
-          let curr_max =
-              [ (left, right); (left + 1, right); (left, right - 1) ]
-              |> CCList.fold_left
-                   (fun acc (left, right) ->
-                      let a = coords.(left) in
-                      let b = coords.(right) in
-                      let origin_a = divide_two a in
-                      let origin_b = divide_two b in
-                      let area = get_area origin_a origin_b in
-                      (* Printf.printf
-                        "%s %s %d\n"
-                        (coord_to_string origin_a)
-                        (coord_to_string origin_b)
-                        area; *)
-                      if
-                        area > acc
-                        && check_rect a b vertical_lines horizontal_lines
-                      then
-                        area
-                      else
-                        acc )
-                   max_area
-          in
+    for left = 0 to len - 2 do
+      for right = len - 1 downto left + 1 do
+        begin
+          let a = coords.(left) in
+          let b = coords.(right) in
+          let origin_a = divide_two a in
+          let origin_b = divide_two b in
+          let area = get_area origin_a origin_b in
 
-          loop (left + 1) (right - 1) curr_max
+          print_newline ();
+          let check = check_rect a b vertical_lines horizontal_lines in
+
+          Printf.printf
+            "%s %s %d %b\n"
+            (coord_to_string origin_a)
+            (coord_to_string origin_b)
+            area
+            check;
+          if area > !max_area && check then max_area := area
         end
-    in
-    loop 0 (len - 1) 0
+      done
+    done;
+
+    !max_area
 ;;
 
 let parse_line (s : string) : coord =
@@ -207,11 +241,7 @@ let () =
     print_int (CCList.length horizontal_lines);
     print_newline ();
     let res = find_max_area coords vertical_lines horizontal_lines in
-
-    (* let check =
-        check_rect (9 * 2, 5 * 2) (2 * 2, 3 * 2) horizontal_lines vertical_lines
-    in
-    Printf.printf "(9,5) (2,3) %b\n" check; *)
     print_int res;
+    (* let _ = is_in_polygon (5, 11) vertical_lines in *)
     ()
 ;;
