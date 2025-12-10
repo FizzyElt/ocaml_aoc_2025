@@ -37,7 +37,7 @@ let machines = File.read_list_of_line parse_line Sys.argv.(1)
 module LightSet = CCSet.Make (Int)
 
 let press_button_count (target, buttons) =
-    let reachable = LightSet.empty in
+    let reachable = ref LightSet.empty in
 
     let queue = Queue.create () in
     Queue.push (0, 0) queue;
@@ -46,12 +46,12 @@ let press_button_count (target, buttons) =
 
     while (not (Queue.is_empty queue)) && CCOption.is_none !res do
       let (x, n) = Queue.take queue in
-      if LightSet.mem x reachable then
+      if LightSet.mem x !reachable then
         ()
       else if x = target then
         res := Some n
       else (
-        let _ = LightSet.add x reachable in
+        reachable := LightSet.add x !reachable;
         buttons
         |> CCList.iter (fun button ->
           let toggled = x lxor button in
@@ -61,7 +61,7 @@ let press_button_count (target, buttons) =
 
     match !res with
     | Some r -> r
-    | None -> failwith "not found"
+    | None -> failwith "not found count"
 ;;
 
 let res =
