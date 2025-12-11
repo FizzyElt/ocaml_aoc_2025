@@ -4,7 +4,6 @@ let parse_lights s =
     s
     |> CCString.to_list
     |> CCList.filter (fun c -> c = '#' || c = '.')
-    |> CCList.rev
     |> CCList.foldi
          (fun acc i light ->
             if light = '#' then
@@ -13,6 +12,7 @@ let parse_lights s =
               acc )
          0
 ;;
+
 let parse_button s =
     CCString.sub s 1 (CCString.length s - 2)
     |> CCString.split_on_char ','
@@ -25,7 +25,6 @@ let parse_line s =
 
     let (lights, tail) = CCList.hd_tl parts in
     let (buttons, _) = CCList.take_drop (CCList.length tail - 1) tail in
-
     let lights = parse_lights (CCString.trim lights) in
     let buttons = CCList.map parse_button buttons in
 
@@ -35,41 +34,37 @@ let parse_line s =
 let machines = File.read_list_of_line parse_line Sys.argv.(1)
 
 module LightSet = CCSet.Make (Int)
+module LightMap = CCMap.Make (Int)
 
 let press_button_count (target, buttons) =
-    let reachable = ref LightSet.empty in
-
     let queue = Queue.create () in
     Queue.push (0, 0) queue;
+
+    let reachable = ref LightSet.empty in
 
     let res = ref None in
 
     while (not (Queue.is_empty queue)) && CCOption.is_none !res do
       let (x, n) = Queue.take queue in
-      if LightSet.mem x !reachable then
-        ()
-      else if x = target then
+      if x = target then
         res := Some n
-      else (
+      else if LightSet.mem x !reachable then
+        ()
+      else begin
         reachable := LightSet.add x !reachable;
         buttons
-        |> CCList.iter (fun button ->
-          let toggled = x lxor button in
+        |> CCList.iter (fun btn ->
+          let toggled = x lxor btn in
           Queue.push (toggled, n + 1) queue )
-      )
+      end
     done;
 
-    match !res with
-    | Some r -> r
-    | None -> failwith "not found count"
+    CCOption.get_exn_or "impossible" !res
 ;;
 
 let res =
     machines
-    |> CCList.mapi (fun i machine ->
-      print_endline ("run " ^ CCInt.to_string i);
-
-      press_button_count machine )
+    |> CCList.map (fun machine -> press_button_count machine)
     |> CCList.fold_left ( + ) 0
 ;;
 
