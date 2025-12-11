@@ -1,6 +1,6 @@
 open Lib
 
-let parse_lights s =
+let parse_lights (s : string) : int =
     s
     |> CCString.to_list
     |> CCList.filter (fun c -> c = '#' || c = '.')
@@ -13,14 +13,14 @@ let parse_lights s =
          0
 ;;
 
-let parse_button s =
+let parse_button (s : string) : int =
     CCString.sub s 1 (CCString.length s - 2)
     |> CCString.split_on_char ','
     |> CCList.map (fun b -> CCInt.of_string_exn b)
     |> CCList.fold_left (fun acc i -> (1 lsl i) + acc) 0
 ;;
 
-let parse_line s =
+let parse_line (s : string) : int * int list =
     let parts = CCString.split_on_char ' ' s in
 
     let (lights, tail) = CCList.hd_tl parts in
@@ -34,9 +34,8 @@ let parse_line s =
 let machines = File.read_list_of_line parse_line Sys.argv.(1)
 
 module LightSet = CCSet.Make (Int)
-module LightMap = CCMap.Make (Int)
 
-let press_button_count (target, buttons) =
+let press_button_count ((target, buttons) : int * int list) : int =
     let queue = Queue.create () in
     Queue.push (0, 0) queue;
 
