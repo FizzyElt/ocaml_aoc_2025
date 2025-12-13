@@ -1,3 +1,3 @@
 (executables
- (names q1 q2)
+ (names q1)
  (libraries containers lib))
