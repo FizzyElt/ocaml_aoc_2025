@@ -14,7 +14,7 @@
  (allow_empty)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml)
+ (depends ocaml containers lp lp-glpk)
  (tags
   ("add topics" "to describe" your project)))
 
